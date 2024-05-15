@@ -17,3 +17,4 @@ test_deploy/target/
 src/agreement_version_2/target
 /test_deploy/test_deploy/agreement_version_2/src/
 /test_deploy/test_deploy/agreement_version_2/target/
+/agreement_version_2/target/
