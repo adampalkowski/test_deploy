@@ -10,7 +10,10 @@ Scarb.lock
 .cargo/config.toml
 bin/client/proptest-regressions/
 resources/json_generator_out/
+test_deploy/target/
 
-/test_deploy/target
+/test_deploy/target/
 .snfoundry_cache/
 src/agreement_version_2/target
+/test_deploy/test_deploy/agreement_version_2/src/
+/test_deploy/test_deploy/agreement_version_2/target/
