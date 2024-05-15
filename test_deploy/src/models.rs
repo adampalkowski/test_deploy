@@ -1,11 +1,5 @@
-use crate::RunnerError;
 use serde::{Deserialize, Serialize};
 use starknet::core::types::FieldElement;
-#[derive(Debug, Clone)]
-pub struct DeployResult {
-    pub deployed_address: FieldElement,
-    pub transaction_hash: FieldElement,
-}
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -31,38 +25,8 @@ pub struct FieldElementAgreement {
     pub client_signature_s: FieldElement,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct InputData {
-    pub client_public_key: String,
-    pub server_public_key: String,
-    pub agreements: Vec<Agreement>,
-}
-
 pub struct ProfileData {
     pub salt: FieldElement,
     pub udc_address: FieldElement,
     pub class_hash: FieldElement,
-}
-
-pub fn to_field_elements_agreement(
-    agreement: Agreement,
-) -> Result<FieldElementAgreement, RunnerError> {
-    let quantity = FieldElement::from_dec_str(&agreement.quantity)?;
-    let nonce = FieldElement::from_hex_be(&agreement.nonce)?;
-    let price = FieldElement::from_dec_str(&agreement.price)?;
-    let server_signature_r = FieldElement::from_hex_be(&agreement.server_signature_r)?;
-    let server_signature_s = FieldElement::from_hex_be(&agreement.server_signature_s)?;
-    let client_signature_r = FieldElement::from_hex_be(&agreement.client_signature_r)?;
-    let client_signature_s = FieldElement::from_hex_be(&agreement.client_signature_s)?;
-    let final_agreement = FieldElementAgreement {
-        quantity,
-        nonce,
-        price,
-        server_signature_r,
-        server_signature_s,
-        client_signature_r,
-        client_signature_s,
-    };
-    Ok(final_agreement)
 }

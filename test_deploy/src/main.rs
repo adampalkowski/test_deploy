@@ -1,23 +1,15 @@
-use crate::models::{to_field_elements_agreement, DeployResult, InputData, ProfileData};
-use clap::Parser;
+use crate::errors::RunnerError;
+use crate::models::ProfileData;
 use starknet::accounts::ExecutionEncoding;
 use starknet::contract::ContractFactory;
-
-use crate::errors::RunnerError;
 use starknet::core::types::InvokeTransactionResult;
-use starknet::providers::Provider;
-use starknet::signers::Signer;
 use starknet::{
-    accounts::{Account, Call, SingleOwnerAccount},
+    accounts::{Account, SingleOwnerAccount},
     core::types::contract::{CompiledClass, SierraClass},
     core::types::{BlockId, BlockTag, FieldElement},
-    macros::selector,
     providers::{jsonrpc::HttpTransport, JsonRpcClient},
     signers::{LocalWallet, SigningKey},
 };
-use std::fs::File;
-use std::io::Read;
-use std::sync::Arc;
 use url::Url;
 mod errors;
 mod models;
@@ -42,6 +34,7 @@ async fn main() -> Result<(), RunnerError> {
 
     let server_public_key =
         felt!("0x70bf7cc40c6ea06a861742fa98c2a22e077672a1dd9ed2aa025ec2f8258a2e5");
+
     let parsed = Url::parse("http://localhost:5050/rpc")?;
 
     let profile_data = ProfileData {
@@ -52,7 +45,7 @@ async fn main() -> Result<(), RunnerError> {
 
     let prefunded_account = get_account(parsed, chain_id, address, private_key);
 
-    let deployment_result = deploy_contract(
+    deploy_contract(
         prefunded_account,
         client_public_key,
         server_public_key,
@@ -63,32 +56,12 @@ async fn main() -> Result<(), RunnerError> {
     Ok(())
 }
 
-pub async fn declare_contract<P, S>(
-    prefunded_account: &SingleOwnerAccount<P, S>,
-) -> Result<FieldElement, RunnerError>
-where
-    P: Provider + Send + Sync,
-    S: Signer + Send + Sync,
-{
-    let contract_artifact: SierraClass = serde_json::from_str(SIERRA_STR).unwrap();
-    let compiled_class: CompiledClass = serde_json::from_str(CASM_STR).unwrap();
-    let casm_class_hash = compiled_class.class_hash()?;
-    let flattened_class = contract_artifact.clone().flatten()?;
-
-    let result = prefunded_account
-        .declare(Arc::new(flattened_class), casm_class_hash)
-        .send()
-        .await
-        .unwrap();
-    Ok(result.class_hash)
-}
-
 pub async fn deploy_contract(
     prefunded_account: SingleOwnerAccount<JsonRpcClient<HttpTransport>, LocalWallet>,
     client_public_key: FieldElement,
     server_public_key: FieldElement,
     profile_data: ProfileData,
-) -> Result<DeployResult, RunnerError> {
+) -> Result<(), RunnerError> {
     let contract_factory: ContractFactory<
         SingleOwnerAccount<JsonRpcClient<HttpTransport>, LocalWallet>,
     > = ContractFactory::new_with_udc(
@@ -97,24 +70,16 @@ pub async fn deploy_contract(
         profile_data.udc_address,
     );
 
-    let deployment = contract_factory.deploy(vec![], profile_data.salt, true);
-    let deployed_address = deployment.deployed_address();
+    let deployment = contract_factory.deploy(
+        vec![client_public_key, server_public_key],
+        profile_data.salt,
+        true,
+    );
 
     let InvokeTransactionResult { transaction_hash } =
         deployment.send().await.expect("Unable to deploy contract");
-    let result = DeployResult {
-        deployed_address,
-        transaction_hash,
-    };
-    Ok(result)
-}
 
-pub fn read_data() -> Result<InputData, RunnerError> {
-    let mut file = File::open("resources/json_generator_out/in.json")?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    let data: InputData = serde_json::from_str(&contents)?;
-    Ok(data)
+    Ok(())
 }
 
 pub fn get_account(
